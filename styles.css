@@ -21,7 +21,9 @@ body {
     box-sizing: border-box;
 }
 
-.hidden { display: none; }
+.hidden { 
+    display: none; 
+}
 
 .nav-arrow {
     position: fixed;
@@ -114,6 +116,11 @@ body {
     justify-content: center;
     align-items: center;
     cursor: pointer; /* Cursor para close */
+}
+
+/* Opção A: garante que o modal some quando tiver a classe hidden */
+.modal.hidden {
+    display: none;
 }
 
 .modal-content {
