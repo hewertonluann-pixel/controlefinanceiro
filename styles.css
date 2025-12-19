@@ -17,6 +17,8 @@ html, body { height: 100%; }
   --space-1: 8px;
   --space-2: 12px;
   --space-3: 16px;
+
+  --swipe-reveal: 128px;
 }
 
 body {
@@ -49,10 +51,7 @@ body {
 
 .hidden { display: none; }
 
-.muted-text {
-  opacity: 0.85;
-  line-height: 1.6;
-}
+.muted-text { opacity: 0.85; line-height: 1.6; }
 
 /* Navegação */
 .nav-arrow {
@@ -89,6 +88,12 @@ body {
   box-shadow: 8px 8px 0 var(--shadow);
   max-width: 100%;
   overflow-wrap: anywhere;
+}
+
+.panel-compact {
+  padding: var(--space-2);
+  border-width: 6px;
+  box-shadow: 6px 6px 0 var(--shadow);
 }
 
 #hud-saldo { text-align: center; color: #0f0; }
@@ -139,6 +144,59 @@ body {
 
 .chart-panel canvas { max-width: 100%; }
 
+/* ===== Controls / Chips ===== */
+.entries-controls {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.controls-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-2);
+}
+
+.control label {
+  display: block;
+  margin-bottom: 6px;
+}
+
+input, select, button { font-family: inherit; }
+
+input, select {
+  width: 100%;
+  padding: 10px;
+  border: 2px outset var(--panel-border);
+  background: #0b0b0b;
+  color: #fff;
+}
+
+.chip-row,
+.entries-summary {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.chip {
+  display: inline-block;
+  padding: 8px 10px;
+  border: 2px outset var(--panel-border);
+  background: #222;
+  line-height: 1;
+}
+
+.chip--click {
+  cursor: pointer;
+  box-shadow: 2px 2px 0 var(--shadow);
+  background: #1a1a1a;
+}
+
+.chip--info { background: rgba(102, 102, 102, 0.18); }
+.chip--income { border-color: #2ecc71; background: rgba(46, 204, 113, 0.18); }
+.chip--expense { border-color: #e74c3c; background: rgba(231, 76, 60, 0.18); }
+
 /* ===== Lista de cards ===== */
 .entries-list {
   display: grid;
@@ -146,6 +204,56 @@ body {
   gap: var(--space-3);
 }
 
+/* Swipe wrapper */
+.entry-swipe {
+  position: relative;
+  overflow: hidden;
+}
+
+.entry-swipe__actions {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: stretch;
+  gap: 10px;
+  padding: 10px;
+  pointer-events: none; /* só habilita quando aberto */
+}
+
+.entry-swipe__actions--left {
+  justify-content: flex-start;
+}
+
+.entry-swipe__actions--right {
+  justify-content: flex-end;
+}
+
+.entry-swipe__actions .pixel-btn {
+  pointer-events: auto;
+  height: 100%;
+}
+
+/* Conteúdo do card que desliza */
+.entry-swipe__content {
+  transform: translateX(0);
+  transition: transform 180ms ease;
+  will-change: transform;
+}
+
+.entry-swipe[data-swipe="open-left"] .entry-swipe__content {
+  transform: translateX(var(--swipe-reveal));
+}
+
+.entry-swipe[data-swipe="open-right"] .entry-swipe__content {
+  transform: translateX(calc(var(--swipe-reveal) * -1));
+}
+
+.entry-swipe[data-swipe="open-left"] .entry-swipe__actions--left,
+.entry-swipe[data-swipe="open-right"] .entry-swipe__actions--right {
+  pointer-events: auto;
+}
+
+/* Card visual */
 .entry-card {
   border: 6px outset var(--panel-border);
   background: #0b0b0b;
@@ -180,13 +288,8 @@ body {
   align-items: baseline;
 }
 
-.entry-card__amount {
-  color: #0f0;
-}
-
-.entry-card__amount--expense {
-  color: #ff6b6b;
-}
+.entry-card__amount { color: #0f0; }
+.entry-card__amount--expense { color: #ff6b6b; }
 
 .badge {
   display: inline-block;
@@ -196,29 +299,12 @@ body {
   line-height: 1;
 }
 
-.entry-card__actions {
-  margin-top: var(--space-2);
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-}
+/* Aspectos por categoria */
+.entry-card--income { border-color: #2ecc71; }
 
-/* Aspectos por tipo/categoria */
-.entry-card--income {
-  border-color: #2ecc71;
-}
-
-.entry-card--obrigatorio {
-  border-color: #e74c3c; /* vermelho: obrigatório */
-}
-
-.entry-card--necessario {
-  border-color: #f1c40f; /* amarelo: necessário */
-}
-
-.entry-card--superfluo {
-  border-color: #9b59b6; /* roxo: supérfluo */
-}
+.entry-card--obrigatorio { border-color: #e74c3c; }
+.entry-card--necessario  { border-color: #f1c40f; }
+.entry-card--superfluo   { border-color: #9b59b6; }
 
 .badge--obrigatorio { background: rgba(231, 76, 60, 0.18); }
 .badge--necessario  { background: rgba(241, 196, 15, 0.18); }
@@ -277,16 +363,6 @@ body {
   cursor: pointer;
 }
 
-input, select, button { font-family: inherit; }
-
-input, select {
-  width: 100%;
-  padding: 10px;
-  border: 2px outset var(--panel-border);
-  background: #0b0b0b;
-  color: #fff;
-}
-
 .form-actions {
   display: flex;
   gap: var(--space-2);
@@ -300,6 +376,7 @@ input, select {
 .nav-arrow:focus,
 input:focus,
 select:focus,
+.chip--click:focus,
 .toast__btn:focus {
   outline: 2px solid #fff;
   outline-offset: 2px;
@@ -384,8 +461,9 @@ body.modal-open { overflow: hidden; }
 
   .charts-grid { grid-template-columns: 1fr; }
 
-  /* Cards em 1 coluna no mobile */
-  .entries-list {
-    grid-template-columns: 1fr;
+  .entries-list { grid-template-columns: 1fr; }
+
+  .controls-grid {
+    grid-template-columns: 1fr 1fr;
   }
 }
