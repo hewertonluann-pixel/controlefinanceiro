@@ -86,21 +86,8 @@
     </header>
 
     <main>
-      <div class="table-scroll" role="region" aria-label="Tabela de lançamentos do mês">
-        <table id="entries-table">
-          <thead>
-            <tr>
-              <th>Tipo</th>
-              <th>Valor (R$)</th>
-              <th>Data</th>
-              <th>Descrição</th>
-              <th>Categoria</th>
-              <th>Ações</th>
-            </tr>
-          </thead>
-          <tbody id="entries-body"></tbody>
-        </table>
-      </div>
+      <div id="entries-list" class="entries-list" role="list" aria-label="Lista de lançamentos"></div>
+      <p id="entries-empty" class="muted-text hidden">Nenhum lançamento ainda. Crie um em “Novo Lançamento”.</p>
     </main>
   </div>
 
@@ -146,7 +133,6 @@
     </div>
   </div>
 
-  <!-- Região de toasts (feedback CRUD) -->
   <div id="toast-region" class="toast-region" aria-live="polite" aria-atomic="true"></div>
 
   <script src="script.js"></script>
