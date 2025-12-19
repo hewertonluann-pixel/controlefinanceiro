@@ -11,8 +11,6 @@ let editingIndex = null;
 let pieChart, barChart, lineChart;
 
 let lastFocusedElement = null;
-
-/* Para desfazer delete */
 let lastDeleted = null;
 
 const possibleAchievements = [
@@ -23,7 +21,7 @@ const possibleAchievements = [
 /* ========= Toast (feedback) ========= */
 function showToast({
   message,
-  variant = 'info',      // 'success' | 'danger' | 'info'
+  variant = 'info',
   duration = 3500,
   actionText = null,
   onAction = null
@@ -146,10 +144,7 @@ function updateCharts() {
     type: 'pie',
     data: {
       labels: ['Obrigatório', 'Necessário', 'Supérfluo'],
-      datasets: [{
-        data: [required, necessary, superflua],
-        backgroundColor: ['#f00', '#ff0', '#0f0']
-      }]
+      datasets: [{ data: [required, necessary, superflua], backgroundColor: ['#f00', '#ff0', '#9b59b6'] }]
     },
     options: { responsive: true }
   });
@@ -180,30 +175,6 @@ function updateCharts() {
   });
 }
 
-function updateHistory() {
-  if (currentScreen !== 2) return;
-
-  const tbody = document.getElementById('entries-body');
-  tbody.innerHTML = '';
-
-  data.forEach((entry, i) => {
-    const row = document.createElement('tr');
-    row.innerHTML = `
-      <td>${entry.type === 'income' ? '💰 Receita' : '📉 Despesa'}</td>
-      <td>R$ ${entry.amount.toFixed(2)}</td>
-      <td>${entry.date}</td>
-      <td>${entry.description}</td>
-      <td>${entry.category || 'N/A'}</td>
-      <td>
-        <button type="button" class="pixel-btn btn-compact" data-action="delete" data-index="${i}">🗑️</button>
-        <button type="button" class="pixel-btn btn-compact" data-action="edit" data-index="${i}">✏️</button>
-        <button type="button" class="pixel-btn btn-compact" data-action="duplicate" data-index="${i}">🔁</button>
-      </td>
-    `;
-    tbody.appendChild(row);
-  });
-}
-
 function saveData() {
   localStorage.setItem('financeData', JSON.stringify(data));
   localStorage.setItem('points', String(points));
@@ -231,9 +202,7 @@ function openAddModal() {
   document.body.classList.add('modal-open');
 
   const dateInput = document.getElementById('date');
-  if (!dateInput.value) {
-    dateInput.value = new Date().toISOString().slice(0, 10);
-  }
+  if (!dateInput.value) dateInput.value = new Date().toISOString().slice(0, 10);
 
   const type = document.querySelector('input[name="type"]:checked')?.value || 'income';
   setCategoryVisibilityByType(type);
@@ -246,7 +215,6 @@ function closeModal() {
 
   document.getElementById('finance-form').reset();
   document.getElementById('modal-title').textContent = 'Novo Lançamento';
-
   setCategoryVisibilityByType('income');
 
   const modal = document.getElementById('modal-add-entry');
@@ -259,12 +227,95 @@ function closeModal() {
   lastFocusedElement = null;
 }
 
+/* ===== Helpers para cards ===== */
+function escapeHtml(str) {
+  return String(str)
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#039;');
+}
+
+function formatBRL(value) {
+  return value.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function categoryClass(entry) {
+  if (entry.type === 'income') return 'income';
+  if (entry.category === 'Obrigatório') return 'obrigatorio';
+  if (entry.category === 'Necessário') return 'necessario';
+  if (entry.category === 'Supérfluo') return 'superfluo';
+  return 'necessario';
+}
+
+function categoryLabel(entry) {
+  if (entry.type === 'income') return 'Receita';
+  return entry.category || 'Despesa';
+}
+
+/* ===== Render de cards (sem tabela) ===== */
+function updateHistory() {
+  if (currentScreen !== 2) return;
+
+  const list = document.getElementById('entries-list');
+  const empty = document.getElementById('entries-empty');
+
+  list.innerHTML = '';
+
+  if (data.length === 0) {
+    empty.classList.remove('hidden');
+    return;
+  }
+
+  empty.classList.add('hidden');
+
+  data.forEach((entry, i) => {
+    const isExpense = entry.type === 'expense';
+    const catCls = categoryClass(entry);
+
+    const titleIcon = isExpense ? '📉' : '💰';
+    const amountCls = isExpense ? 'entry-card__amount entry-card__amount--expense' : 'entry-card__amount';
+
+    const card = document.createElement('article');
+    card.className = `entry-card entry-card--${catCls}`;
+    card.setAttribute('role', 'listitem');
+
+    /* 2 a 3 linhas:
+       Linha 1: ícone + descrição | badge
+       Linha 2: valor + data
+       Linha 3: ações (separada) */
+    card.innerHTML = `
+      <div class="entry-card__top">
+        <div class="entry-card__title">
+          ${titleIcon} ${escapeHtml(entry.description)}
+        </div>
+        <span class="badge badge--${catCls}">${escapeHtml(categoryLabel(entry))}</span>
+      </div>
+
+      <div class="entry-card__meta">
+        <div class="entry-card__row">
+          <span class="${amountCls}">R$ ${formatBRL(entry.amount)}</span>
+          <span>📅 ${escapeHtml(entry.date)}</span>
+        </div>
+      </div>
+
+      <div class="entry-card__actions" aria-label="Ações do lançamento">
+        <button type="button" class="pixel-btn btn-compact" data-action="edit" data-index="${i}">✏️ Editar</button>
+        <button type="button" class="pixel-btn btn-compact" data-action="duplicate" data-index="${i}">🔁 Duplicar</button>
+        <button type="button" class="pixel-btn btn-compact" data-action="delete" data-index="${i}">🗑️ Excluir</button>
+      </div>
+    `;
+
+    list.appendChild(card);
+  });
+}
+
 /* ========= CRUD com feedback ========= */
 function deleteEntry(index) {
   const entry = data[index];
   if (!entry) return;
 
-  // UX: evitar exclusão acidental (pode remover se preferir só "Undo")
   const ok = window.confirm('Deseja realmente excluir este lançamento?');
   if (!ok) return;
 
@@ -342,15 +393,7 @@ function handleFormSubmit(e) {
     return;
   }
 
-  const entry = {
-    id: Date.now(),
-    type,
-    amount,
-    date,
-    description,
-    category
-  };
-
+  const entry = { id: Date.now(), type, amount, date, description, category };
   const isEdit = editingIndex !== null;
 
   if (isEdit) data[editingIndex] = entry;
@@ -373,7 +416,7 @@ function handleFormSubmit(e) {
     duration: 2500
   });
 }
-/* ========= /CRUD com feedback ========= */
+/* ========= /CRUD ========= */
 
 function initTheme() {
   const savedTheme = localStorage.getItem('theme');
@@ -403,7 +446,6 @@ document.addEventListener('DOMContentLoaded', () => {
     document.body.dataset.theme = theme;
     document.getElementById('theme-switcher').textContent = theme === 'dark' ? '☀️' : '🌙';
     localStorage.setItem('theme', theme);
-
     showToast({ message: 'Tema alterado.', variant: 'info', duration: 1800 });
   });
 
@@ -430,12 +472,11 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('finance-form').addEventListener('submit', handleFormSubmit);
 
   document.querySelectorAll('input[name="type"]').forEach(radio => {
-    radio.addEventListener('change', (e) => {
-      setCategoryVisibilityByType(e.target.value);
-    });
+    radio.addEventListener('change', (e) => setCategoryVisibilityByType(e.target.value));
   });
 
-  document.getElementById('entries-body').addEventListener('click', (e) => {
+  /* Delegação de eventos nos cards */
+  document.getElementById('entries-list').addEventListener('click', (e) => {
     const btn = e.target.closest('button[data-action][data-index]');
     if (!btn) return;
 
