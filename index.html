@@ -1,117 +1,154 @@
-	<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Finance Game - Controle Financeiro</title>
-    <link rel="stylesheet" href="styles.css">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Finance Game - Controle Financeiro</title>
+  <link rel="stylesheet" href="styles.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
+
 <body>
-    <div id="nav-left" class="nav-arrow">◀</div>
-    <div id="nav-right" class="nav-arrow">▶</div>
+  <button id="nav-left" class="nav-arrow" type="button" aria-label="Tela anterior">◀</button>
+  <button id="nav-right" class="nav-arrow" type="button" aria-label="Próxima tela">▶</button>
 
-    <div id="home-screen" class="screen">
-        <header class="hud-header">
-            <h1>Finance Game</h1>
-            <div class="user-info">🦉 Jogador Anônimo | 🔥 Streak: <span id="streak">0</span> | ⭐ Pontos: <span id="points">0</span> | Nível: <span id="level">1</span> | 🌙 <button id="theme-switcher">Tema</button></div>
-        </header>
-        <main>
-            <section id="hud-saldo" class="pixel-panel">
-                <p>Saldo Atual: R$ <span id="balance" class="score-anim">0.00</span></p>
-            </section>
-            <section class="hud-resumo">
-                <div class="pixel-panel">
-                    <h3>📉 Despesas</h3>
-                    <p>Total: R$ <span id="total-expenses">0.00</span></p>
-                    <progress id="progress-expenses" class="pixel-bar" value="0" max="100"></progress>
-                    <p id="alerts" class="alert-text"></p>
-                </div>
-                <div class="pixel-panel">
-                    <h3>💰 Receitas</h3>
-                    <p>Total: R$ <span id="total-income">0.00</span></p>
-                    <progress id="progress-income" class="pixel-bar" value="0" max="100"></progress>
-                </div>
-            </section>
-            <button id="btn-add-entry" class="pixel-btn">➕ Novo Lançamento</button>
-            <div class="achievements-list">
-                <h3>🏆 Conquistas</h3>
-                <ul id="achievement-list"></ul>
-            </div>
-        </main>
-    </div>
+  <div id="home-screen" class="screen">
+    <header class="hud-header">
+      <h1>Finance Game</h1>
 
-    <div id="charts-screen" class="screen hidden">
-        <header class="screen-header"><h2>📊 Gráficos Financeiros</h2></header>
-        <main>
-            <div id="charts-container" class="charts-grid">
-                <div class="chart-panel">
-                    <canvas id="pie-chart"></canvas>
-                    <p>Distribuição de Despesas</p>
-                </div>
-                <div class="chart-panel">
-                    <canvas id="bar-chart"></canvas>
-                    <p>Receitas vs Despesas (Mês)</p>
-                </div>
-                <div class="chart-panel">
-                    <canvas id="line-chart"></canvas>
-                    <p>Evolução do Saldo</p>
-                </div>
-            </div>
-        </main>
-    </div>
+      <div class="user-info">
+        <span>🦉 Jogador Anônimo</span>
+        <span> | 🔥 Streak: <span id="streak">0</span></span>
+        <span> | ⭐ Pontos: <span id="points">0</span></span>
+        <span> | Nível: <span id="level">1</span></span>
+        <span> | </span>
+        <button id="theme-switcher" type="button" class="pixel-btn btn-compact" aria-label="Alternar tema">🌙</button>
+      </div>
+    </header>
 
-    <div id="entries-screen" class="screen hidden">
-        <header class="screen-header"><h2>📜 Lançamentos do Mês</h2></header>
-        <main>
-            <table id="entries-table">
-                <thead>
-                    <tr>
-                        <th>Tipo</th>
-                        <th>Valor (R$)</th>
-                        <th>Data</th>
-                        <th>Descrição</th>
-                        <th>Categoria</th>
-                        <th>Ações</th>
-                    </tr>
-                </thead>
-                <tbody id="entries-body"></tbody>
-            </table>
-        </main>
-    </div>
+    <main>
+      <section id="hud-saldo" class="pixel-panel" aria-live="polite">
+        <p>Saldo Atual: R$ <span id="balance" class="score-anim">0.00</span></p>
+      </section>
 
-    <div id="modal-add-entry" class="modal hidden">
-        <div class="modal-content pixel-panel">
-            <span class="close-btn">&times;</span>
-            <h3 id="modal-title">Novo Lançamento</h3>
-            <form id="finance-form">
-                <label>Tipo:</label>
-                <div class="toggle-buttons">
-                    <input type="radio" id="income" name="type" value="income" checked required>
-                    <label for="income" class="toggle-btn">💰 Receita</label>
-                    <input type="radio" id="expense" name="type" value="expense" required>
-                    <label for="expense" class="toggle-btn">📉 Despesa</label>
-                </div>
-                <label for="amount">Valor (R$):</label>
-                <input type="number" id="amount" step="0.01" required>
-                <label for="date">Data:</label>
-                <input type="date" id="date" required>
-                <label for="description">Descrição:</label>
-                <input type="text" id="description" required>
-                <div id="category-section" style="display:none;">
-                    <label for="category">Categoria (Despesa):</label>
-                    <select id="category" required>
-                        <option value="Obrigatório">Obrigatório</option>
-                        <option value="Necessário">Necessário</option>
-                        <option value="Supérfluo">Supérfluo</option>
-                    </select>
-                </div>
-                <button type="submit" class="pixel-btn">Salvar</button>
-                <button type="button" id="btn-close-modal" class="pixel-btn">Cancelar</button>
-            </form>
+      <section class="hud-resumo">
+        <div class="pixel-panel">
+          <h3>📉 Despesas</h3>
+          <p>Total: R$ <span id="total-expenses">0.00</span></p>
+          <progress id="progress-expenses" class="pixel-bar" value="0" max="100"></progress>
+          <p id="alerts" class="alert-text" aria-live="polite"></p>
         </div>
-    </div>
 
-    <script src="script.js"></script>
+        <div class="pixel-panel">
+          <h3>💰 Receitas</h3>
+          <p>Total: R$ <span id="total-income">0.00</span></p>
+          <progress id="progress-income" class="pixel-bar" value="0" max="100"></progress>
+        </div>
+      </section>
+
+      <button id="btn-add-entry" type="button" class="pixel-btn">➕ Novo Lançamento</button>
+
+      <div class="achievements-list">
+        <h3>🏆 Conquistas</h3>
+        <ul id="achievement-list"></ul>
+      </div>
+    </main>
+  </div>
+
+  <div id="charts-screen" class="screen hidden">
+    <header class="screen-header">
+      <h2>📊 Gráficos Financeiros</h2>
+    </header>
+
+    <main>
+      <div id="charts-container" class="charts-grid">
+        <div class="chart-panel">
+          <canvas id="pie-chart"></canvas>
+          <p>Distribuição de Despesas</p>
+        </div>
+
+        <div class="chart-panel">
+          <canvas id="bar-chart"></canvas>
+          <p>Receitas vs Despesas (Mês)</p>
+        </div>
+
+        <div class="chart-panel">
+          <canvas id="line-chart"></canvas>
+          <p>Evolução do Saldo</p>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <div id="entries-screen" class="screen hidden">
+    <header class="screen-header">
+      <h2>📜 Lançamentos do Mês</h2>
+    </header>
+
+    <main>
+      <div class="table-scroll" role="region" aria-label="Tabela de lançamentos do mês">
+        <table id="entries-table">
+          <thead>
+            <tr>
+              <th>Tipo</th>
+              <th>Valor (R$)</th>
+              <th>Data</th>
+              <th>Descrição</th>
+              <th>Categoria</th>
+              <th>Ações</th>
+            </tr>
+          </thead>
+          <tbody id="entries-body"></tbody>
+        </table>
+      </div>
+    </main>
+  </div>
+
+  <div id="modal-add-entry" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+    <div class="modal-content pixel-panel">
+      <button type="button" class="close-btn" aria-label="Fechar modal">&times;</button>
+
+      <h3 id="modal-title">Novo Lançamento</h3>
+
+      <form id="finance-form" novalidate>
+        <label>Tipo:</label>
+        <div class="toggle-buttons">
+          <input type="radio" id="income" name="type" value="income" checked required>
+          <label for="income" class="toggle-btn">💰 Receita</label>
+
+          <input type="radio" id="expense" name="type" value="expense" required>
+          <label for="expense" class="toggle-btn">📉 Despesa</label>
+        </div>
+
+        <label for="amount">Valor (R$):</label>
+        <input type="number" id="amount" step="0.01" inputmode="decimal" required>
+
+        <label for="date">Data:</label>
+        <input type="date" id="date" required>
+
+        <label for="description">Descrição:</label>
+        <input type="text" id="description" required>
+
+        <div id="category-section" style="display:none;">
+          <label for="category">Categoria (Despesa):</label>
+          <select id="category">
+            <option value="Obrigatório">Obrigatório</option>
+            <option value="Necessário">Necessário</option>
+            <option value="Supérfluo">Supérfluo</option>
+          </select>
+        </div>
+
+        <div class="form-actions">
+          <button type="submit" class="pixel-btn">Salvar</button>
+          <button type="button" id="btn-close-modal" class="pixel-btn">Cancelar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Região de toasts (feedback CRUD) -->
+  <div id="toast-region" class="toast-region" aria-live="polite" aria-atomic="true"></div>
+
+  <script src="script.js"></script>
 </body>
 </html>
