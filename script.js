@@ -18,6 +18,14 @@ const possibleAchievements = [
   { title: "Saldo Positivo", desc: "⚖️ Primeiro saldo positivo!" }
 ];
 
+/* ===== Estado da view (filtros/ordenação) ===== */
+const entriesView = {
+  month: localStorage.getItem('entriesMonth') || currentMonthString(), // "YYYY-MM" ou ""
+  type: localStorage.getItem('entriesType') || 'all',                 // all|income|expense
+  category: localStorage.getItem('entriesCategory') || 'all',         // all|Obrigatório|Necessário|Supérfluo
+  sortBy: localStorage.getItem('entriesSortBy') || 'date-desc'        // date-desc|date-asc|amount-desc|amount-asc
+};
+
 /* ========= Toast (feedback) ========= */
 function showToast({
   message,
@@ -227,7 +235,7 @@ function closeModal() {
   lastFocusedElement = null;
 }
 
-/* ===== Helpers para cards ===== */
+/* ===== Helpers ===== */
 function escapeHtml(str) {
   return String(str)
     .replaceAll('&', '&amp;')
@@ -239,6 +247,13 @@ function escapeHtml(str) {
 
 function formatBRL(value) {
   return value.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function currentMonthString() {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  return `${y}-${m}`;
 }
 
 function categoryClass(entry) {
@@ -254,60 +269,229 @@ function categoryLabel(entry) {
   return entry.category || 'Despesa';
 }
 
-/* ===== Render de cards (sem tabela) ===== */
+function persistEntriesView() {
+  localStorage.setItem('entriesMonth', entriesView.month);
+  localStorage.setItem('entriesType', entriesView.type);
+  localStorage.setItem('entriesCategory', entriesView.category);
+  localStorage.setItem('entriesSortBy', entriesView.sortBy);
+}
+
+function getVisibleEntries() {
+  // retorna [{ entry, index }] para manter índice original
+  let list = data.map((entry, index) => ({ entry, index }));
+
+  // filtro por mês: se entriesView.month === "" => todos
+  if (entriesView.month) {
+    list = list.filter(({ entry }) => typeof entry.date === 'string' && entry.date.startsWith(entriesView.month));
+  }
+
+  // filtro por tipo
+  if (entriesView.type !== 'all') {
+    list = list.filter(({ entry }) => entry.type === entriesView.type);
+  }
+
+  // filtro por categoria (somente despesas fazem sentido)
+  if (entriesView.category !== 'all') {
+    list = list.filter(({ entry }) => entry.type === 'expense' && entry.category === entriesView.category);
+  }
+
+  // ordenação
+  const sort = entriesView.sortBy;
+  list.sort((a, b) => {
+    if (sort === 'date-desc') return (b.entry.date || '').localeCompare(a.entry.date || '');
+    if (sort === 'date-asc') return (a.entry.date || '').localeCompare(b.entry.date || '');
+    if (sort === 'amount-desc') return (b.entry.amount || 0) - (a.entry.amount || 0);
+    if (sort === 'amount-asc') return (a.entry.amount || 0) - (b.entry.amount || 0);
+    return 0;
+  });
+
+  return list;
+}
+
+function updateEntriesSummary(visible) {
+  const chipPeriod = document.getElementById('chip-period');
+  const chipCount = document.getElementById('chip-count');
+  const chipIncome = document.getElementById('chip-income');
+  const chipExpense = document.getElementById('chip-expense');
+
+  const periodLabel = entriesView.month ? entriesView.month : 'Todos';
+  const incomeSum = visible.filter(x => x.entry.type === 'income').reduce((s, x) => s + (x.entry.amount || 0), 0);
+  const expenseSum = visible.filter(x => x.entry.type === 'expense').reduce((s, x) => s + (x.entry.amount || 0), 0);
+
+  chipPeriod.textContent = `Período: ${periodLabel}`;
+  chipCount.textContent = `Itens: ${visible.length}`;
+  chipIncome.textContent = `Receitas: R$ ${formatBRL(incomeSum)}`;
+  chipExpense.textContent = `Despesas: R$ ${formatBRL(expenseSum)}`;
+}
+
+/* ===== Swipe actions ===== */
+function closeAllSwipes(exceptEl = null) {
+  document.querySelectorAll('.entry-swipe[data-swipe]').forEach(el => {
+    if (exceptEl && el === exceptEl) return;
+    el.removeAttribute('data-swipe');
+    const content = el.querySelector('.entry-swipe__content');
+    if (content) content.style.transform = '';
+  });
+}
+
+function initSwipeHandlers() {
+  const list = document.getElementById('entries-list');
+  if (!list) return;
+
+  let activeSwipe = null;
+  let startX = 0;
+  let startY = 0;
+  let isDragging = false;
+  let decided = false;
+  let allowSwipe = false;
+
+  list.addEventListener('pointerdown', (e) => {
+    const content = e.target.closest('.entry-swipe__content');
+    if (!content) return;
+
+    const swipe = content.closest('.entry-swipe');
+    if (!swipe) return;
+
+    // Evita iniciar swipe ao clicar em botões
+    if (e.target.closest('button')) return;
+
+    activeSwipe = swipe;
+    startX = e.clientX;
+    startY = e.clientY;
+    isDragging = true;
+    decided = false;
+    allowSwipe = false;
+
+    closeAllSwipes(activeSwipe);
+    content.setPointerCapture(e.pointerId);
+  });
+
+  list.addEventListener('pointermove', (e) => {
+    if (!isDragging || !activeSwipe) return;
+
+    const content = activeSwipe.querySelector('.entry-swipe__content');
+    if (!content) return;
+
+    const dx = e.clientX - startX;
+    const dy = e.clientY - startY;
+
+    if (!decided) {
+      if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return;
+      decided = true;
+      allowSwipe = Math.abs(dx) > Math.abs(dy);
+    }
+
+    if (!allowSwipe) return;
+
+    // agora é swipe horizontal: evita scroll “competir”
+    e.preventDefault();
+
+    const reveal = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--swipe-reveal'), 10) || 128;
+    const clamped = Math.max(-reveal, Math.min(reveal, dx));
+
+    // movimentação “ao vivo”
+    content.style.transition = 'none';
+    content.style.transform = `translateX(${clamped}px)`;
+  }, { passive: false });
+
+  list.addEventListener('pointerup', (e) => {
+    if (!isDragging || !activeSwipe) return;
+
+    const content = activeSwipe.querySelector('.entry-swipe__content');
+    if (!content) return;
+
+    const dx = e.clientX - startX;
+    const reveal = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--swipe-reveal'), 10) || 128;
+
+    content.style.transition = '';
+    content.style.transform = '';
+
+    if (allowSwipe) {
+      if (dx > reveal / 2) {
+        activeSwipe.setAttribute('data-swipe', 'open-left');
+      } else if (dx < -reveal / 2) {
+        activeSwipe.setAttribute('data-swipe', 'open-right');
+      } else {
+        activeSwipe.removeAttribute('data-swipe');
+      }
+    }
+
+    isDragging = false;
+    decided = false;
+    allowSwipe = false;
+    activeSwipe = null;
+  });
+
+  // Fecha swipe ao tocar fora
+  document.addEventListener('pointerdown', (e) => {
+    if (e.target.closest('.entry-swipe')) return;
+    closeAllSwipes();
+  });
+}
+
+/* ===== Render de cards ===== */
 function updateHistory() {
   if (currentScreen !== 2) return;
 
-  const list = document.getElementById('entries-list');
-  const empty = document.getElementById('entries-empty');
+  const listEl = document.getElementById('entries-list');
+  const emptyEl = document.getElementById('entries-empty');
 
-  list.innerHTML = '';
+  const visible = getVisibleEntries();
+  updateEntriesSummary(visible);
 
-  if (data.length === 0) {
-    empty.classList.remove('hidden');
+  listEl.innerHTML = '';
+  closeAllSwipes();
+
+  if (visible.length === 0) {
+    emptyEl.classList.remove('hidden');
     return;
   }
+  emptyEl.classList.add('hidden');
 
-  empty.classList.add('hidden');
-
-  data.forEach((entry, i) => {
+  visible.forEach(({ entry, index }) => {
     const isExpense = entry.type === 'expense';
     const catCls = categoryClass(entry);
-
     const titleIcon = isExpense ? '📉' : '💰';
     const amountCls = isExpense ? 'entry-card__amount entry-card__amount--expense' : 'entry-card__amount';
 
-    const card = document.createElement('article');
-    card.className = `entry-card entry-card--${catCls}`;
-    card.setAttribute('role', 'listitem');
+    const item = document.createElement('article');
+    item.className = 'entry-swipe';
+    item.setAttribute('role', 'listitem');
 
-    /* 2 a 3 linhas:
-       Linha 1: ícone + descrição | badge
-       Linha 2: valor + data
-       Linha 3: ações (separada) */
-    card.innerHTML = `
-      <div class="entry-card__top">
-        <div class="entry-card__title">
-          ${titleIcon} ${escapeHtml(entry.description)}
-        </div>
-        <span class="badge badge--${catCls}">${escapeHtml(categoryLabel(entry))}</span>
+    item.innerHTML = `
+      <div class="entry-swipe__actions entry-swipe__actions--left" aria-hidden="true">
+        <button type="button" class="pixel-btn btn-compact" data-action="edit" data-index="${index}">✏️</button>
+        <button type="button" class="pixel-btn btn-compact" data-action="duplicate" data-index="${index}">🔁</button>
       </div>
 
-      <div class="entry-card__meta">
-        <div class="entry-card__row">
-          <span class="${amountCls}">R$ ${formatBRL(entry.amount)}</span>
-          <span>📅 ${escapeHtml(entry.date)}</span>
-        </div>
+      <div class="entry-swipe__actions entry-swipe__actions--right" aria-hidden="true">
+        <button type="button" class="pixel-btn btn-compact" data-action="delete" data-index="${index}">🗑️</button>
       </div>
 
-      <div class="entry-card__actions" aria-label="Ações do lançamento">
-        <button type="button" class="pixel-btn btn-compact" data-action="edit" data-index="${i}">✏️ Editar</button>
-        <button type="button" class="pixel-btn btn-compact" data-action="duplicate" data-index="${i}">🔁 Duplicar</button>
-        <button type="button" class="pixel-btn btn-compact" data-action="delete" data-index="${i}">🗑️ Excluir</button>
+      <div class="entry-swipe__content">
+        <div class="entry-card entry-card--${catCls}">
+          <div class="entry-card__top">
+            <div class="entry-card__title">${titleIcon} ${escapeHtml(entry.description)}</div>
+            <span class="badge badge--${catCls}">${escapeHtml(categoryLabel(entry))}</span>
+          </div>
+
+          <div class="entry-card__meta">
+            <div class="entry-card__row">
+              <span class="${amountCls}">R$ ${formatBRL(entry.amount || 0)}</span>
+              <span>📅 ${escapeHtml(entry.date || '')}</span>
+            </div>
+          </div>
+
+          <div class="entry-card__row" style="margin-top: 10px;">
+            <button type="button" class="pixel-btn btn-compact" data-action="edit" data-index="${index}">✏️ Editar</button>
+            <button type="button" class="pixel-btn btn-compact" data-action="duplicate" data-index="${index}">🔁 Duplicar</button>
+            <button type="button" class="pixel-btn btn-compact" data-action="delete" data-index="${index}">🗑️ Excluir</button>
+          </div>
+        </div>
       </div>
     `;
 
-    list.appendChild(card);
+    listEl.appendChild(item);
   });
 }
 
@@ -426,8 +610,77 @@ function initTheme() {
   }
 }
 
+/* ===== Controles: sincroniza UI <-> estado ===== */
+function syncEntriesControlsFromState() {
+  const month = document.getElementById('filter-month');
+  const type = document.getElementById('filter-type');
+  const category = document.getElementById('filter-category');
+  const sortBy = document.getElementById('sort-by');
+
+  month.value = entriesView.month || '';
+  type.value = entriesView.type;
+  category.value = entriesView.category;
+  sortBy.value = entriesView.sortBy;
+}
+
+function wireEntriesControls() {
+  const month = document.getElementById('filter-month');
+  const type = document.getElementById('filter-type');
+  const category = document.getElementById('filter-category');
+  const sortBy = document.getElementById('sort-by');
+
+  month.addEventListener('change', () => {
+    entriesView.month = month.value || '';
+    persistEntriesView();
+    updateHistory();
+  });
+
+  type.addEventListener('change', () => {
+    entriesView.type = type.value;
+    persistEntriesView();
+    updateHistory();
+  });
+
+  category.addEventListener('change', () => {
+    entriesView.category = category.value;
+    persistEntriesView();
+    updateHistory();
+  });
+
+  sortBy.addEventListener('change', () => {
+    entriesView.sortBy = sortBy.value;
+    persistEntriesView();
+    updateHistory();
+  });
+
+  // Chips rápidos
+  document.querySelector('.chip-row')?.addEventListener('click', (e) => {
+    const btn = e.target.closest('button[data-chip]');
+    if (!btn) return;
+
+    const chip = btn.dataset.chip;
+
+    if (chip === 'month-current') entriesView.month = currentMonthString();
+    if (chip === 'month-all') entriesView.month = '';
+
+    if (chip === 'type-all') entriesView.type = 'all';
+    if (chip === 'type-expense') entriesView.type = 'expense';
+    if (chip === 'type-income') entriesView.type = 'income';
+
+    persistEntriesView();
+    syncEntriesControlsFromState();
+    updateHistory();
+  });
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   initTheme();
+
+  // Aplica estado inicial nos controles (antes de renderizar)
+  syncEntriesControlsFromState();
+  wireEntriesControls();
+  initSwipeHandlers();
+
   showScreen(currentScreen);
   updateUI();
 
@@ -475,7 +728,7 @@ document.addEventListener('DOMContentLoaded', () => {
     radio.addEventListener('change', (e) => setCategoryVisibilityByType(e.target.value));
   });
 
-  /* Delegação de eventos nos cards */
+  // Delegação de eventos: ações nos cards (botões visíveis e swipe)
   document.getElementById('entries-list').addEventListener('click', (e) => {
     const btn = e.target.closest('button[data-action][data-index]');
     if (!btn) return;
@@ -483,6 +736,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const action = btn.dataset.action;
     const index = parseInt(btn.dataset.index, 10);
     if (Number.isNaN(index)) return;
+
+    closeAllSwipes();
 
     if (action === 'delete') deleteEntry(index);
     if (action === 'edit') editEntry(index);
