@@ -86,8 +86,65 @@
     </header>
 
     <main>
+      <!-- Controles (filtros + ordenar) -->
+      <section class="entries-controls pixel-panel panel-compact" aria-label="Filtros e ordenação">
+        <div class="controls-grid">
+          <div class="control">
+            <label for="filter-month">Período</label>
+            <input type="month" id="filter-month" />
+          </div>
+
+          <div class="control">
+            <label for="filter-type">Tipo</label>
+            <select id="filter-type">
+              <option value="all">Todos</option>
+              <option value="income">Receitas</option>
+              <option value="expense">Despesas</option>
+            </select>
+          </div>
+
+          <div class="control">
+            <label for="filter-category">Categoria</label>
+            <select id="filter-category">
+              <option value="all">Todas</option>
+              <option value="Obrigatório">Obrigatório</option>
+              <option value="Necessário">Necessário</option>
+              <option value="Supérfluo">Supérfluo</option>
+            </select>
+          </div>
+
+          <div class="control">
+            <label for="sort-by">Ordenar</label>
+            <select id="sort-by">
+              <option value="date-desc">Data (mais recente)</option>
+              <option value="date-asc">Data (mais antiga)</option>
+              <option value="amount-desc">Valor (maior)</option>
+              <option value="amount-asc">Valor (menor)</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Chips rápidos -->
+        <div class="chip-row" role="group" aria-label="Filtros rápidos">
+          <button type="button" class="chip chip--click" data-chip="month-current">Mês atual</button>
+          <button type="button" class="chip chip--click" data-chip="month-all">Todos os meses</button>
+          <button type="button" class="chip chip--click" data-chip="type-all">Tudo</button>
+          <button type="button" class="chip chip--click" data-chip="type-expense">Somente despesas</button>
+          <button type="button" class="chip chip--click" data-chip="type-income">Somente receitas</button>
+        </div>
+      </section>
+
+      <!-- Resumo do que está sendo exibido -->
+      <section class="entries-summary" aria-label="Resumo do filtro">
+        <span class="chip chip--info" id="chip-period">Período: —</span>
+        <span class="chip chip--info" id="chip-count">Itens: 0</span>
+        <span class="chip chip--income" id="chip-income">Receitas: R$ 0,00</span>
+        <span class="chip chip--expense" id="chip-expense">Despesas: R$ 0,00</span>
+      </section>
+
+      <!-- Lista de cards -->
       <div id="entries-list" class="entries-list" role="list" aria-label="Lista de lançamentos"></div>
-      <p id="entries-empty" class="muted-text hidden">Nenhum lançamento ainda. Crie um em “Novo Lançamento”.</p>
+      <p id="entries-empty" class="muted-text hidden">Nenhum lançamento nesse filtro. Ajuste os filtros ou crie um em “Novo Lançamento”.</p>
     </main>
   </div>
 
